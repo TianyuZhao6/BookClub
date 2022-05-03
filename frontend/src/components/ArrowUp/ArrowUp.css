@@ -1,0 +1,13 @@
+.arrow {
+    font-size: 50px;
+    display: flex;
+    justify-content: center;
+}
+
+.arrow-icon:hover {
+    background-color: green;
+}
+
+.arrow:hover {
+    cursor: pointer;
+}
