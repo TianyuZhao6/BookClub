@@ -12,12 +12,15 @@ const SelectPreferencesPage = () => {
 
 
 
-    useEffect(async () => {
-        console.log(username)
-        const userPreferences = await getPreferencesByUsername(username)
-        console.log(userPreferences)
-        setSelectedGenres(userPreferences.data)
-    }, [])
+    useEffect(() => {
+        let active = true;
+        getPreferencesByUsername(username).then(response => {
+            if (!active) return;
+            if (response.error) setErrorMsg(response.error);
+            else setSelectedGenres(response.data);
+        });
+        return () => { active = false; };
+    }, [username]);
 
     const [selectedGenres, setSelectedGenres] = useState([])
     const [successMsg, setSuccessMsg] = useState("")
@@ -79,7 +82,6 @@ const SelectPreferencesPage = () => {
     })
 
     const setUserGenres = async () => {
-        console.log(selectedGenres)
 
         if (selectedGenres.length < 5) {
             setErrorMsg("You must select at least 5 genres")
@@ -91,7 +93,8 @@ const SelectPreferencesPage = () => {
         }
 
         const response = await setPreferencesByUsername(username, body)
-        console.log(response)
+        if (response.error) { setErrorMsg(response.error); return; }
+        setErrorMsg("");
         setSuccessMsg("Success")
     }
 

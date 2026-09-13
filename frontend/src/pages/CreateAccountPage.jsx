@@ -2,9 +2,12 @@ import { useState, useContext } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { Navigate } from 'react-router-dom';
 import { createAccount, login } from '../api/userAPI';
+import SessionContext from '../session/SessionContext';
+import { errorText } from '../api/request';
 import UserContext from '../user/UserContext';
 
 const CreateAccountPage = () => {
+    const { setSession } = useContext(SessionContext);
     const { setUsername } = useContext(UserContext)
 
     const [enteredUsername, setEnteredUsername] = useState("");
@@ -51,15 +54,14 @@ const CreateAccountPage = () => {
 
 
         const response = await createAccount(body);
-        console.log(response)
 
         if (response.message === "Account successfully created") {
             setErrorMsg(null)
 
-            console.log(body)
             const response1 = await login(body)
-            console.log(response1)
 
+            if (!response1.sessionID) { setErrorMsg([errorText(response1.error)]); return; }
+            setSession(response1.sessionID);
             setUsername(enteredUsername)
 
             setTimeout(() => {
@@ -67,7 +69,7 @@ const CreateAccountPage = () => {
             }, 400)
 
         } else {
-            setErrorMsg(response.error)
+            setErrorMsg([errorText(response.error)])
         }
     }
 
@@ -83,7 +85,7 @@ const CreateAccountPage = () => {
 
 
     return <div>
-        <div style={{ "width": 600, "margin": "0 auto", "marginTop": 30 }}>
+        <div style={{ "width": "min(600px, 90vw)", "margin": "0 auto", "marginTop": 30 }}>
             <Form>
                 <Form.Group className="mb-3" controlId="formBasicEmail">
                     <Form.Label>Email address</Form.Label>

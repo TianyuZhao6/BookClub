@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-import { login, deleteAccount } from "../../api/userAPI"
+import { deleteAccount } from "../../api/userAPI"
 import { useNavigate } from 'react-router-dom';
 
 import UserContext from '../../user/UserContext';
@@ -21,18 +21,12 @@ const DeleteAccountModal = (props) => {
             password: enteredPassword
         }
 
-        const request = await login(body)
-        console.log(request)
-
-        if (request.message === "Login Successful") {
-            const deleteAccountResponse = await deleteAccount(body, session);
-            console.log(deleteAccountResponse)
-            setUsername("");
-            setSession("");
-            navigate("/")
-        } else {
-            setErrors(request.error)
-        }
+        const response = await deleteAccount(body, session);
+        if (response.error) { setErrors(response.error); return; }
+        setUsername('');
+        setSession('');
+        props.setModalClose();
+        navigate('/');
     }
 
     return (

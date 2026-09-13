@@ -6,12 +6,12 @@ import { getPreferencesByUsername, getUserByUserName } from "../../api/userAPI"
 import PasswordChangeModal from "../PasswordChangeModal/PasswordChangeModal"
 import DeleteAccountModal from "../../components/DeleteAccountModal/DeleteAccountModal"
 import UserContext from '../../user/UserContext';
-import SessionContext from "../../session/SessionContext"
+
 
 
 const MyAccountPage = () => {
     const { username } = useContext(UserContext);
-    const { session } = useContext(SessionContext)
+
     const navigate = useNavigate();
 
     const [email, setEmail] = useState("");
@@ -20,20 +20,19 @@ const MyAccountPage = () => {
     const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
 
-    useEffect(async () => {
-        if (username === "") {
-            navigate("/login")
+    const [error, setError] = useState('');
+    useEffect(() => {
+        let active = true;
+        async function load() {
+            const [user, preferences] = await Promise.all([getUserByUserName(username), getPreferencesByUsername(username)]);
+            if (!active) return;
+            if (user.error || preferences.error) { setError(user.error || preferences.error); return; }
+            setEmail(user.user.email);
+            setSelectedGenres(preferences.data);
         }
-        console.log(username)
-        console.log(session)
-        const incomingUserData = await getUserByUserName(username);
-
-        console.log(incomingUserData)
-        setEmail(incomingUserData.user.email)
-
-        const incomingPreferences = await getPreferencesByUsername(username)
-        setSelectedGenres(incomingPreferences.data)
-    }, [])
+        load();
+        return () => { active = false; };
+    }, [username]);
 
     const displaySelectedGenres = selectedGenres.map((genre, index) => {
         return <div className="selected-item" key={index}>{genre}</div>
@@ -41,6 +40,7 @@ const MyAccountPage = () => {
 
     return (
         <div className="text">
+            {error && <p role="alert">{error}</p>}
             <div className="page">
                 <div className="preferences">
                     <div className="display-properly">

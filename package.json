@@ -1,0 +1,10 @@
+{
+  "name": "bookclub",
+  "private": true,
+  "scripts": {
+    "setup": "npm ci --prefix backend && npm ci --prefix frontend",
+    "test": "npm test --prefix backend && npm test --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  },
+  "engines": { "node": ">=22.12" }
+}

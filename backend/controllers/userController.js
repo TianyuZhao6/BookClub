@@ -1,589 +1,82 @@
-const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const emailValidator = require("email-validator");
-const passwordValidator = require('password-validator');
-
+const emailValidator = require('email-validator');
+const mongoose = require('mongoose');
 const User = require('../models/user');
 const Book = require('../models/book');
-const { update } = require('../models/user');
-
-exports.getUsers = (req, res, next) => {
-
-    // take the user schema and find all instances
-    User.find().then(users => {
-        res.json({ allUsers: users });
-    })
-        .catch(err => {
-            // log any possible errors after connecting to mongo
-            console.log(err);
-        });
+const Rating = require('../models/rating');
+const { passwordErrors, validPreferences } = require('../services/validation');
+const publicUser = user => ({ _id: user._id, username: user.username, email: user.email, preferences: user.preferences });
+const destroySession = (req, token) => new Promise((resolve, reject) => req.sessionStore.destroy(token, err => err ? reject(err) : resolve()));
+exports.getUsers = async (req, res) => res.json({ allUsers: [publicUser(req.user)] });
+exports.getByUsername = async (req, res) => res.json({ user: publicUser(req.user) });
+exports.createAccount = async (req, res) => {
+  const { username, password, preferences = [] } = req.body;
+  const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  const errors = passwordErrors(password);
+  if (typeof username !== 'string' || !/^[A-Za-z0-9]{5,100}$/.test(username)) errors.push('Username must contain 5–100 letters or numbers');
+  if (!emailValidator.validate(email)) errors.push('Email must be valid');
+  if (!validPreferences(preferences)) errors.push('Preferences must be a list of genres');
+  if (errors.length) return res.status(400).json({ error: errors });
+  if (await User.exists({ $or: [{ username }, { email }] })) return res.status(409).json({ error: ['Username or email already exists'] });
+  const user = await User.create({ username, email, password: await bcrypt.hash(password, 12), preferences: [...new Set(preferences)] });
+  res.status(201).json({ data: publicUser(user), message: 'Account successfully created', error: [] });
 };
-
-exports.getByUsername = (req, res, next) => {
-
-    // get the username parameter from the get request
-    const username = req.params.username;
-
-    // take the user schema and find all instances
-    User.findOne({ username: username }).then(user => {
-        // return the user
-        res.json({ user: user });
-    })
-        .catch(err => {
-            // log any possible errors after connecting to mongo
-            console.log(err);
-        });
+exports.login = async (req, res) => {
+  const { username, password } = req.body;
+  if (typeof username !== 'string' || typeof password !== 'string') return res.status(400).json({ error: 'Username and password are required' });
+  const user = await User.findOne({ username });
+  if (!user || !await bcrypt.compare(password, user.password)) return res.status(401).json({ error: 'Incorrect username or password' });
+  await new Promise((resolve, reject) => req.session.regenerate(err => err ? reject(err) : resolve()));
+  req.session.user = { username: user.username, id: String(user._id), authVersion: user.authVersion || 0 };
+  await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+  res.json({ data: publicUser(user), message: 'Login Successful', sessionID: req.sessionID, error: null });
 };
-
-exports.createAccount = async (req, res, next) => {
-    var error = [];
-
-    const username = req.body.username;
-    const email = req.body.email;
-    const password = req.body.password;
-    const preferences = req.body.preferences;
-
-    // // check username or email doesn't already exist
-    const userExists = await User.findOne({ username: username }) ? true : false;
-    const emailExists = await User.findOne({ email: email }) ? true : false;
-
-    if (userExists || emailExists) {
-        error.push("Username or email already exists");
-    }
-
-    // validate email
-    if (!emailValidator.validate(email)) {
-        error.push("Email must be valid");
-    }
-
-    // validate password
-    const passwordSchema = new passwordValidator();
-    passwordSchema
-        .is().min(8)                                    // Minimum length 8
-        .is().max(100)                                  // Maximum length 100
-        .has().uppercase()                              // Must have uppercase letters
-        .has().lowercase()                              // Must have lowercase letters
-        .has().digits(1)                                // Must have at least 1 digits
-        .has().symbols(1)                               // Must have at least 1 symbol
-        .has().not().spaces()                           // Should not have spaces
-
-    if (!passwordSchema.validate(password)) {
-        let errorList = passwordSchema.validate(password, { list: true })
-        if (errorList.includes("spaces")) {
-            error.push("Password cannot contain spaces");
-        }
-        if (errorList.includes("symbols") || errorList.includes("digits") || errorList.includes("symbols") || errorList.includes("uppercase") || errorList.includes("lowercase")) {
-            error.push("Password must contain an upper case, lower case, special character, and number");
-        }
-        if (errorList.includes("min")) {
-            error.push("Password must contain more than 8 characters");
-        }
-    }
-
-    // validate username
-    const usernameSchema = new passwordValidator();
-    usernameSchema
-        .is().min(5)                                    // Minimum length 5
-        .is().max(100)                                  // Maximum length 100
-        .has().not().symbols()                          // Should not have symbols
-        .has().not().spaces()                           // Should not have spaces
-
-    if (!usernameSchema.validate(username)) {
-        let errorList = usernameSchema.validate(username, { list: true })
-        if (errorList.includes("spaces")) {
-            error.push("Username cannot contain spaces");
-        }
-        if (errorList.includes("symbols")) {
-            error.push("Username must not contain special characters");
-        }
-        if (errorList.includes("min")) {
-            error.push("Username must contain more than 5 characters");
-        }
-    }
-
-    // check if there is any error
-    if (error.length > 0) {
-        return res.status(404).send({
-            data: {},
-            message: "error",
-            error: error
-        });
-    }
-
-    // encrypt password
-    let hashedPassword = await bcrypt.hash(password, 12);
-
-    // create the new user
-    const user = new User({
-        username: username,
-        email: email,
-        password: hashedPassword,
-        preferences: preferences,
-        readBook: [],
-        unreadBook: []
-    });
-
-    await user.save();
-
-    return res.json({
-        data: user,
-        message: "Account successfully created",
-        error: error
-    });
+exports.logout = async (req, res) => {
+  await destroySession(req, req.authToken);
+  res.json({ message: 'logout successful' });
 };
-
-exports.changePassword = async (req, res, next) => {
-    var error = [];
-
-    const { oldPassword, newPassword, newPassword2, username } = req.body;
-
-    // check username or email doesn't already exist
-    const user = await User.findOne({ username: username });
-    if (user == null) {
-        error.push("Username does not exist");
-        return res.status(404).send({
-            data: {},
-            error: error
-        });
-    }
-
-    // check if password match
-    const passwordMatches = await bcrypt.compare(oldPassword, user.password);
-    if (!passwordMatches) {
-        error.push("Password does not match");
-    }
-
-    // check if new passwords match
-    if (newPassword.localeCompare(newPassword2) !== 0) {
-        error.push("New passwords do not match");
-    }
-
-    // validate password
-    const passwordSchema = new passwordValidator();
-    passwordSchema
-        .is().min(8)                                    // Minimum length 8
-        .is().max(100)                                  // Maximum length 100
-        .has().uppercase()                              // Must have uppercase letters
-        .has().lowercase()                              // Must have lowercase letters
-        .has().digits(1)                                // Must have at least 1 digits
-        .has().symbols(1)                               // Must have at least 1 symbol
-        .has().not().spaces()                           // Should not have spaces
-
-    if (!passwordSchema.validate(newPassword)) {
-        let errorList = passwordSchema.validate(newPassword, { list: true })
-        if (errorList.includes("spaces")) {
-            error.push("Password cannot contain spaces");
-        }
-        if (errorList.includes("symbols") || errorList.includes("digits") || errorList.includes("symbols") || errorList.includes("uppercase") || errorList.includes("lowercase")) {
-            error.push("Password must contain an upper case, lower case, special character, and number");
-        }
-        if (errorList.includes("min")) {
-            error.push("Password must contain more than 8 characters");
-        }
-    }
-
-    // check if there is any error
-    if (error.length > 0) {
-        return res.status(404).send({
-            data: {},
-            error: error
-        });
-    }
-
-    // hash password
-    let hashedPassword = await bcrypt.hash(newPassword, 12);
-
-    // update the password
-    await User.updateOne(
-        { username: username },
-        { $set: { password: hashedPassword } }
-    );
-
-    return res.json({
-        data: user,
-        error: error
-    });
+exports.changePassword = async (req, res) => {
+  const { oldPassword, newPassword, newPassword2 } = req.body;
+  const errors = passwordErrors(newPassword);
+  if (newPassword !== newPassword2) errors.push('New passwords do not match');
+  if (typeof oldPassword !== 'string' || !await bcrypt.compare(oldPassword, req.user.password)) errors.push('Password does not match');
+  if (errors.length) return res.status(400).json({ error: errors });
+  req.user.password = await bcrypt.hash(newPassword, 12);
+  req.user.authVersion = (req.user.authVersion || 0) + 1;
+  await req.user.save();
+  req.authSession.user.authVersion = req.user.authVersion;
+  await new Promise((resolve, reject) => req.sessionStore.set(req.authToken, req.authSession, err => err ? reject(err) : resolve()));
+  res.json({ error: [], message: 'Password updated' });
 };
-
-exports.login = async (req, res, next) => {
-    // get the credentials
-    const username = req.body.username;
-    const password = req.body.password;
-
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-        return res.json({
-            data: {},
-            message: {},
-            error: "Username does not exist"
-        });
-    }
-
-    const passwordMatches = await bcrypt.compare(password, user.password);
-
-    // login the user
-    if (passwordMatches) {
-        req.session.isLoggedIn = true;
-        req.session.user = user;
-
-        req.session.save(async (err) => {
-            if (!err) {
-                // try searching the session
-                const result = await mongoose.connection.collection('sessions').findOne({ 'session.user.username': username });
-
-                return res.json({
-                    data: user,
-                    message: "Login Successful",
-                    sessionID: result._id,
-                    error: {}
-                });
-            }
-        });
-    }
-
-    // return error
-    else {
-        return res.json({
-            data: {},
-            message: {},
-            error: "Incorrect Password"
-        });
-    }
-}
-
-exports.logout = async (req, res, next) => {
-    const sessionID = req.body.sessionID;
-
-    // search the db for the session
-    const result = await mongoose.connection.collection('sessions').deleteOne({ _id: sessionID });
-
-    if (result.acknowledged) {
-        return res.status(200).json({
-            message: "logout successful"
-        })
-    }
-    else {
-        return res.status(404).json({
-            message: "logout error"
-        })
-    }
+exports.deleteAccount = async (req, res) => {
+  if (typeof req.body.password !== 'string' || !await bcrypt.compare(req.body.password, req.user.password)) return res.status(400).json({ error: 'Password does not match' });
+  await Rating.deleteMany({ user: req.user._id });
+  await req.user.deleteOne();
+  await destroySession(req, req.authToken);
+  res.json({ data: 'Account deleted successfully', error: '' });
 };
-
-exports.viewMyLibrary = async (req, res, next) => {
-
-    const username = req.params.username;
-
-    // find user in db
-    const user = await User.findOne({ username: username });
-
-    // if there is no user found
-    if (!user) {
-        return res.status(404).json({
-            message: null,
-            error: "user does not exist"
-        });
-    }
-
-    const myLibrary = user.myLibrary;
-
-    // take each Obj ID and find the corresponding book in the Books collection
-    const updatedLibraryPromises = myLibrary.map(async bookID => await Book.findById(bookID));
-    const updatedLibrary = await Promise.all(updatedLibraryPromises);
-
-    setTimeout(() => {
-        return res.status(200).json({
-            myLibrary: updatedLibrary,
-            message: "successfully retrieved library",
-            error: null
-        });
-
-    }, 1000);
+exports.viewMyLibrary = async (req, res) => res.json({ myLibrary: await Book.find({ _id: { $in: req.user.myLibrary } }), error: null });
+exports.setMyLibrary = async (req, res) => {
+  const id = req.body.removedBook?._id;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: 'A valid book ID is required' });
+  const user = await User.findByIdAndUpdate(req.user._id, { $pull: { myLibrary: id, readBook: id } }, { new: true });
+  res.json({ myLibrary: await Book.find({ _id: { $in: user.myLibrary } }), error: null });
 };
-
-exports.setMyLibrary = async (req, res, next) => {
-    const username = req.params.username;
-    const removedBook = req.body.removedBook;
-
-    const processedBook = await Book.findById(removedBook._id)
-
-    // find user in db
-    const user = await User.findOne({ username: username });
-
-    // if there is no user found
-    if (!user) {
-        return res.status(404).json({
-            message: null,
-            error: "user does not exist"
-        });
-    }
-
-    const myLibrary = user.myLibrary;
-
-    // take each Obj ID and find the corresponding book in the Books collection
-    const updatedMyLibrary = myLibrary.filter((book) => {
-        return !book.equals(processedBook._id)
-    })
-
-
-    const updatedLibraryPromises = updatedMyLibrary.map(async bookID => await Book.findById(bookID));
-    const updatedLibrary = await Promise.all(updatedLibraryPromises);
-
-    await User.updateOne(
-        { username: username },
-        { $set: { myLibrary: updatedLibrary } }
-    );
-
-    setTimeout(() => {
-        return res.status(200).json({
-            myLibrary: user.myLibrary,
-            message: "successfully retrieved library",
-            error: null
-        });
-
-    }, 100);
+exports.getPreferences = async (req, res) => res.json({ data: req.user.preferences, error: null });
+exports.setPreferences = async (req, res) => {
+  const { preferences } = req.body;
+  if (!validPreferences(preferences) || new Set(preferences.map(x => x.trim())).size < 5) return res.status(400).json({ error: 'Select at least 5 different genres (maximum 40)' });
+  req.user.preferences = [...new Set(preferences.map(x => x.trim()))];
+  await req.user.save();
+  res.json({ data: req.user.preferences, error: null });
 };
-
-exports.getPreferences = async (req, res, next) => {
-    const username = req.params.username;
-
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-        return res.status(404).json({
-            error: "user does not exist",
-            message: null
-        });
-    }
-
-    return res.status(200).json({
-        data: user.preferences,
-        message: "successfully retrieved user preferences",
-        error: null
-    })
+exports.getMyReadBooks = async (req, res) => res.json({ myList: await Book.find({ _id: { $in: req.user.readBook.filter(id => req.user.myLibrary.some(book => book.equals(id))) } }), error: null });
+exports.getMyUnReadBooks = async (req, res) => res.json({ myList: await Book.find({ _id: { $in: req.user.myLibrary, $nin: req.user.readBook } }), error: null });
+const markRead = read => async (req, res) => {
+  const book = req.body.bookId ? await Book.findById(req.body.bookId) : typeof req.body.title === 'string' ? await Book.findOne({ title: req.body.title }) : null;
+  if (!book || !req.user.myLibrary.some(id => id.equals(book._id))) return res.status(404).json({ error: 'Book is not in your library' });
+  await User.updateOne({ _id: req.user._id }, read ? { $addToSet: { readBook: book._id } } : { $pull: { readBook: book._id } });
+  res.json({ book, message: read ? 'book was added to the read list' : 'book was marked unread' });
 };
-
-exports.setPreferences = async (req, res, next) => {
-    const username = req.params.username;
-    const preferences = req.body.preferences
-
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-        return res.status(404).json({
-            error: "user does not exist",
-            message: null
-        });
-    }
-
-    user.preferences = preferences;
-    await User.updateOne(
-        { username: username },
-        { $set: { preferences: preferences } }
-    );
-
-    return res.status(200).json({
-        data: user.preferences,
-        message: "successfully set user preferences",
-        error: null
-    })
-};
-
-exports.deleteAccount = async (req, res, next) => {
-    const { username, sessionID } = req.body;
-
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-        return res.status(404).json({
-            error: "User does not exist",
-            data: ""
-        });
-    }
-
-    // delete the user
-    await User.deleteOne(
-        { username: username }
-    );
-
-    // delete the session
-    await mongoose.connection.collection('sessions').deleteOne({ _id: sessionID });
-
-    return res.status(200).json({
-        data: "Account deleted successfully",
-        error: ""
-    })
-};
-
-exports.getMyReadBooks = async (req, res, next) => {
-    const username = req.params.username;
-
-    // find user in db
-    const user = await User.findOne({ username: username });
-
-    // if there is no user found
-    if (!user) {
-        return res.status(404).json({
-            message: null,
-            error: "user does not exist"
-        });
-    }
-
-    const myReadBooks = user.readBook;
-
-    // take each Obj ID and find the corresponding book in the Books collection
-    const updatedReadBooksPromises = myReadBooks.map(async bookID => await Book.findById(bookID));
-    const updatedReadBooks = await Promise.all(updatedReadBooksPromises);
-    // console.log(updatedReadBooks)
-
-    setTimeout(() => {
-        return res.status(200).json({
-            myList: updatedReadBooks,
-            message: "successfully retrieved library",
-            error: null
-        });
-
-    }, 1000);
-};
-
-exports.markBookAsRead = async (req, res, next) => {
-    // since they do not wish to add the book to their library we will not store it in the db
-    // we should implement a way to generate the next book from here ...
-
-    // get book information from request body
-    const username = req.params.username;
-    const title = req.body.title;
-
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-        // return error
-        return res.status(200).json({
-            message: "no user found",
-        });
-    }
-
-    let book = await Book.findOne({ title: title });
-    if (!book) {
-        return res.status(200).json({
-            message: "no book found",
-        });
-    }
-
-    if (user.readBook.includes(book._id)){
-        return res.status(200).json({
-            message: "book was already added as read",
-        });
-    }
-
-    // store the bookID in the users library
-    const bookID = book._id;
-
-    // get current user read book
-    const rBook = user.readBook;
-
-    // add the new book to it
-    rBook.push(bookID);
-
-    // update the read list in db
-    await User.updateOne(
-        { username: username },
-        { $set: { readBook: rBook } }
-    );
-
-    // console.log(book)
-
-    return res.status(200).json({
-        book: book,
-        message: "book was added to the read list",
-    });
-};
-
-exports.getMyUnReadBooks = async (req, res, next) => {
-    const username = req.params.username;
-
-    // find user in db
-    const user = await User.findOne({ username: username });
-
-    // if there is no user found
-    if (!user) {
-        return res.status(404).json({
-            message: null,
-            error: "user does not exist"
-        });
-    }
-
-    const myUnReadBooks = user.unreadBook;
-
-    // take each Obj ID and find the corresponding book in the Books collection
-    const updatedUnReadBooksPromises = myUnReadBooks.map(async bookID => await Book.findById(bookID));
-    const updatedUnReadBooks = await Promise.all(updatedUnReadBooksPromises);
-    // console.log(updatedReadBooks)
-
-    setTimeout(() => {
-        return res.status(200).json({
-            myList: updatedUnReadBooks,
-            message: "successfully retrieved library",
-            error: null
-        });
-
-    }, 1000);
-};
-
-exports.markBookAsUnRead = async (req, res, next) => {
-    // since they do not wish to add the book to their library we will not store it in the db
-    // we should implement a way to generate the next book from here ...
-
-    // get book information from request body
-    const username = req.params.username;
-    const title = req.body.title;
-
-    const user = await User.findOne({ username: username });
-
-    if (!user) {
-        // return error
-        return res.status(200).json({
-            message: "no user found",
-        });
-    }
-
-    let book = await Book.findOne({ title: title });
-    if (!book) {
-        return res.status(200).json({
-            message: "no book found",
-        });
-    }
-
-    // if (!user.readBook.includes(book._id)){
-    //     return res.status(200).json({
-    //         message: "book was not added as read",
-    //     });
-    // }
-
-    // store the bookID in the users library
-    const bookID = book._id;
-
-    // get current user read books
-    const rBook = user.readBook;
-
-    // remove the book from read book list
-    for(var i = 0; i < rBook.length; i++) {
-        if(rBook[i].equals(bookID)) {
-            rBook.splice(i, 1);
-            break;
-        }
-    }
-
-    // update the read list in db
-    await User.updateOne(
-        { username: username },
-        { $set: { readBook: rBook } }
-    );
-
-    console.log(book)
-
-    return res.status(200).json({
-        book: book,
-        message: "book was added to the read list",
-    });
-};
+exports.markBookAsRead = markRead(true);
+exports.markBookAsUnRead = markRead(false);

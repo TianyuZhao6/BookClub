@@ -1,24 +1,12 @@
-const express = require("express");
-const bookController = require("../controllers/bookController");
-
-const router = express.Router();
-
-const auth = require("./middleware/auth");
-
-// load book by name
-router.get('/get/:bookName', bookController.getBookByName);
-
-router.get('/get/db/:bookName', bookController.getBookByNameInDatabase);
-
-// get book recommendation
-router.get('/get', auth.isLoggedIn, bookController.getBookRecommendation);
-
-router.get('/get/by/genre/:genre', bookController.getBookRecommendationByGenre);
-
-router.post('/accept', auth.isLoggedIn, bookController.acceptBookRecommendation);
-
-router.post('/reject', bookController.rejectBookRecommendation);
-
-router.post('/set/rating/:bookName', bookController.setBookRating);
-
+const router = require('express').Router();
+const c = require('../controllers/bookController');
+const { isLoggedIn, asyncRoute: run } = require('./middleware/auth');
+router.get('/get/:bookName', run(c.getBookByName));
+router.get('/get/db/:bookName', run(c.getBookByNameInDatabase));
+router.get('/get', isLoggedIn, run(c.getBookRecommendation));
+router.get('/get/by/genre/:genre', run(c.getBookRecommendationByGenre));
+router.post('/accept', isLoggedIn, run(c.acceptBookRecommendation));
+router.post('/reject', isLoggedIn, run(c.rejectBookRecommendation));
+router.post('/reject/undo', isLoggedIn, run(c.undoRejection));
+router.post('/set/rating/:bookName', isLoggedIn, run(c.setBookRating));
 module.exports = router;

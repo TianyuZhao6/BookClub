@@ -1,269 +1,57 @@
-var books = require("google-books-search");
-var mongoose = require("mongoose");
-
-const User = require("../models/user");
-const Book = require("../models/book");
-
-const googleAPIKey = process.env.GOOGLE_API_KEY;
-
-exports.getBookByName = (req, res, next) => {
-  var options = {
-    key: googleAPIKey,
-    offset: 0,
-    field: "title",
-    limit: 1,
-    type: "books",
-    order: "relevance",
-    lang: "en",
-  };
-
-  const bookName = req.params.bookName;
-
-  books.search(bookName, options, function (error, results, apiResponse) {
-    if (!error) {
-      // check if any book found
-      let error = "";
-      if (results.length == 0) {
-        error = "Book not found";
-      } else {
-        // adjust size of the thumbnail
-      }
-      return res.status(200).send({
-        data: {
-          book: results,
-        },
-        message: error,
-        error: {},
-      });
-    }
-
-    return res.status(404).send({
-      data: {},
-      message: "Error",
-      error: {
-        err: error,
-      },
-    });
-
-  });
-};
-
-exports.getBookRecommendation = (req, res, next) => {
-  var options = {
-    key: googleAPIKey,
-    offset: 0,
-    field: "title",
-    limit: 10,
-    type: "books",
-    order: "relevance",
-    lang: "en",
-  };
-
-  // hardcode for now
-  // const bookName = "Software";
-
-  books.search(bookName, options, function (error, results, apiResponse) {
-
-    if (!error) {
-      return res.status(200).send({
-        data: {
-          book: results,
-        },
-        message: "",
-        error: {},
-      });
-    }
-
-    return res.status(404).send({
-      data: {},
-      message: "Error",
-      error: {
-        err: error,
-      },
-    });
-  });
-};
-
-exports.getBookRecommendationByGenre = (req, res, next) => {
-  var options = {
-    key: googleAPIKey,
-    offset: 0,
-    field: "subject",
-    limit: 40,
-    type: "books",
-    order: "relevance",
-    lang: "en",
-  };
-
-  // get one of the genres of the user
-  const bookGenre = req.params.genre;
-
-  // generate random index between 0 and 39
-  let index = Math.floor(Math.random() * 40);
-  // console.log("Index", index);
-
-  books.search(bookGenre, options, function (error, results, apiResponse) {
-    let shownBook = results[index];
-    let n = 0;
-    // if retrieved book doesnt have a description, get a new one
-    while (!shownBook || !shownBook.description || !shownBook.title || !shownBook.categories || !shownBook.thumbnail) {
-      index = (index + 1) % 40;
-      n += 1;
-      // avoid infinite loop
-      if (n == 40) break;
-      shownBook = results[index];
-    }
-
-    if (!error) {
-      // console.log(results.length);
-      return res.status(200).send({
-        data: {
-          book: results[index],
-        },
-        message: "",
-        error: {},
-      });
-    }
-
-    return res.status(404).send({
-      data: {},
-      message: "Error",
-      error: {
-        err: error,
-      },
-    });
-  });
-};
-
-exports.acceptBookRecommendation = async (req, res, next) => {
-  // get book information from request body
-  const title = req.body.title;
-  const description = req.body.description;
-  const author = req.body.author;
-  const genre = req.body.genre;
-  const thumbnail = req.body.thumbnail;
-  const username = req.body.username;
-
-  const user = await User.findOne({ username: username });
-
-  if (!user) {
-    // return error
-    return res.status(200).json({
-      message: "no user found",
-    });
-  }
-
-  // check if the book has been previously accepted
-  let book = await Book.findOne({ title: title });
-
-  if (!book) {
-    // create the book
-    bookModel = new Book({
-      title: title,
-      author: author,
-      description: description,
-      thumbnail: thumbnail,
-      genre: genre,
-    });
-    book = await bookModel.save();
-  }
-
-  // store the bookID in the users library
-  const bookID = book._id;
-
-  // get current user library
-  const library = user.myLibrary;
-
-  // add the new book to it
-  library.push(bookID);
-
-  // update the library in db
-  await User.updateOne(
-    { username: username },
-    { $set: { myLibrary: library } }
-  );
-
-  return res.status(200).json({
-    book: book,
-    message: "book was added to the library",
-  });
-};
-
-exports.rejectBookRecommendation = async (req, res, next) => {
-  // since they do not wish to add the book to their library we will not store it in the db
-  // we should implement a way to generate the next book from here ...
-
-  // get book information from request body
-  const title = req.body.title;
-  const description = req.body.description;
-  const author = req.body.author;
-  const genre = req.body.genre;
-  const thumbnail = req.body.thumbnail;
-  const username = req.body.username;
-
-  const user = await User.findOne({ username: username });
-
-  if (!user) {
-    // return error
-    return res.status(200).json({
-      message: "no user found",
-    });
-  }
-
-  // console.log("-------------------------------", user.myLibrary)
-  return res.status(200).json({
-    message: "book rejected",
-  });
-};
-
-
-exports.setBookRating = async (req, res, next) => {
-
-  const bookName = req.params.bookName;
-  const book = await Book.findOne({ title: bookName });
-
-  // get current rating
-  const currentRating = book.rating;
-  const incomingRating = req.body.newRating;
-
-  const ratingCount = book.ratingCount;
-  const newRatingCount = ratingCount + 1;
-
-  // get new rating average
-
-  // when displaying the rating, you will round it but not in the db
-  const newRating = (incomingRating + (currentRating * ratingCount)) / newRatingCount;
-
-
-  await Book.updateOne(
-    { title: bookName },
-    { $set: { rating: newRating, ratingCount: newRatingCount } }
-  );
-
-  const updatedBook = await Book.findOne({ title: bookName });
-
-  return res.status(200).json({
-    message: "Thank you for your rating!",
-  });
-
+const search = require('../services/bookSearch');
+const User = require('../models/user');
+const Book = require('../models/book');
+const Rating = require('../models/rating');
+async function results(query, field = 'title', limit = 40) {
+  try { return await search.search(query, { field, limit }); }
+  catch (error) { const err = new Error('Book search is temporarily unavailable. Please try again.'); err.status = 502; throw err; }
 }
-
-exports.getBookByNameInDatabase = async (req, res, next) => {
-  const bookName = req.params.bookName;
-
-  // search the book db
-  const book = await Book.findOne({title: bookName});
-
-  if (book && book.rating != 0) {
-    return res.status(200).json({
-      book: book,
-      error: null
-    })
-  }
-
-  return res.status(404).json({
-    book: null,
-    error: "This book has no ratings yet"
-  })
-
-}
+exports.getBookByName = async (req, res) => {
+  const found = await results(req.params.bookName, 'title', 1);
+  res.json({ data: { book: found }, message: found.length ? '' : 'Book not found', error: null });
+};
+exports.getBookRecommendation = async (req, res) => {
+  const preferences = req.user.preferences.length ? req.user.preferences : ['Fiction'];
+  const genre = preferences[Math.floor(Math.random() * preferences.length)];
+  const library = await Book.find({ _id: { $in: req.user.myLibrary } }).select('title');
+  const excluded = new Set([...library.map(book => book.title), ...(req.user.rejectedBooks || [])]);
+  const found = (await results(genre, 'subject')).filter(book => book.title && !excluded.has(book.title));
+  res.json({ data: { book: found }, message: found.length ? '' : 'No new books in this genre. Try again or change your preferences.', error: null });
+};
+exports.getBookRecommendationByGenre = async (req, res) => {
+  const found = (await results(req.params.genre, 'subject')).filter(book => book.title);
+  res.json({ data: { book: found[Math.floor(Math.random() * found.length)] || null }, message: found.length ? '' : 'No books found for this genre', error: null });
+};
+exports.acceptBookRecommendation = async (req, res) => {
+  const { title, description = '', author = '', genre = [], thumbnail = '' } = req.body;
+  if (typeof title !== 'string' || !title.trim() || title.length > 1000 || ![description, author, thumbnail].every(v => typeof v === 'string') || !Array.isArray(genre) || !genre.every(v => typeof v === 'string')) return res.status(400).json({ error: 'Valid book details are required' });
+  const book = await Book.findOneAndUpdate({ title }, { $setOnInsert: { title, description, author, genre, thumbnail } }, { upsert: true, new: true, runValidators: true });
+  await User.updateOne({ _id: req.user._id }, { $addToSet: { myLibrary: book._id }, $pull: { rejectedBooks: title } });
+  res.json({ book, message: 'book was added to the library' });
+};
+exports.rejectBookRecommendation = async (req, res) => {
+  if (typeof req.body.title !== 'string' || !req.body.title.trim()) return res.status(400).json({ error: 'Book title is required' });
+  await User.updateOne({ _id: req.user._id }, { $addToSet: { rejectedBooks: req.body.title } });
+  res.json({ message: 'book rejected' });
+};
+exports.undoRejection = async (req, res) => {
+  if (typeof req.body.title !== 'string') return res.status(400).json({ error: 'Book title is required' });
+  await User.updateOne({ _id: req.user._id }, { $pull: { rejectedBooks: req.body.title } });
+  res.json({ message: 'Rejection undone' });
+};
+exports.setBookRating = async (req, res) => {
+  const value = req.body.newRating;
+  if (!Number.isInteger(value) || value < 1 || value > 5) return res.status(400).json({ error: 'Rating must be a whole number from 1 to 5' });
+  const book = await Book.findOne({ title: req.params.bookName });
+  if (!book || !req.user.myLibrary.some(id => id.equals(book._id)) || !req.user.readBook.some(id => id.equals(book._id))) return res.status(403).json({ error: 'Mark a book in your library as read before rating it' });
+  await Rating.findOneAndUpdate({ user: req.user._id, book: book._id }, { $set: { value } }, { upsert: true, runValidators: true });
+  res.json({ message: 'Thank you for your rating!' });
+};
+exports.getBookByNameInDatabase = async (req, res) => {
+  const book = await Book.findOne({ title: req.params.bookName }).lean();
+  if (!book) return res.status(404).json({ book: null, error: 'This book has no ratings yet' });
+  const [stats] = await Rating.aggregate([{ $match: { book: book._id } }, { $group: { _id: null, rating: { $avg: '$value' }, ratingCount: { $sum: 1 } } }]);
+  // Preserve historical aggregate ratings until the book has new per-user ratings.
+  if (stats) Object.assign(book, { rating: stats.rating, ratingCount: stats.ratingCount });
+  res.json({ book, error: null });
+};

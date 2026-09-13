@@ -5,7 +5,7 @@ import SessionContext from "../../session/SessionContext";
 
 import Modal from "../../components/modal/Modal"
 const PasswordChangeModal = (props) => {
-    const { session, setSession } = useContext(SessionContext)
+    const { session } = useContext(SessionContext)
 
     const [oldPassword, setOldPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
@@ -22,7 +22,7 @@ const PasswordChangeModal = (props) => {
 
         const res = await changePassword(body, session);
         if (res.error.length !== 0) {
-            setErrors(res.error);
+            setErrors(Array.isArray(res.error) ? res.error : [res.error]);
             return;
         }
 
@@ -30,7 +30,7 @@ const PasswordChangeModal = (props) => {
     }
 
     return (<Modal onClosePasswordChange={props.onClosePasswordChange}>
-        <div style={{ "width": 600, "margin": "0 auto", "marginTop": 0 }}>
+        <div style={{ "width": "min(600px, 90vw)", "margin": "0 auto", "marginTop": 0 }}>
             <h2>Change Password</h2>
             <Form.Group className="mb-3" controlId="formBasicUsername">
                 <Form.Label>Enter old password</Form.Label>

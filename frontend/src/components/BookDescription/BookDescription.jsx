@@ -4,7 +4,7 @@ import Rating from '@mui/material/Rating';
 const BookDescription = (props) => {
 
     var sectionStyle = {
-        width: "473px",
+        width: "min(473px, 90vw)",
         height: "618px",
         display: "block",
         marginRight: "auto",
@@ -33,7 +33,7 @@ const BookDescription = (props) => {
 
                 <div className="genres">
                     {props.genres && props.genres.map((genre) => {
-                        return <div className='genre'>{genre}</div>
+                        return <div className='genre' key={genre}>{genre}</div>
                     })}
                 </div>
                 <br />

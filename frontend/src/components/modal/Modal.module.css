@@ -12,7 +12,9 @@
   color: #050C4E;
   font-size: 20px;
   position: fixed;
-  top: 20vh;
+  top: 10vh;
+  max-height: 80vh;
+  overflow-y: auto;
   left: 5%;
   width: 90%;
   background-color: #7dcef6; 

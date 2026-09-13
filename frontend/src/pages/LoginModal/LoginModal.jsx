@@ -30,7 +30,6 @@ const LoginModal = (props) => {
 
         // send entered username and password to backend
         let response = await login(body);
-        console.log(response)
 
         // if backend approves of the info
         if (response.message === "Login Successful") {
@@ -51,7 +50,7 @@ const LoginModal = (props) => {
     }
 
     return (<Modal onClosePasswordChange={props.onCloseModal}>
-        <div style={{ "width": 600, "margin": "0 auto", "marginTop": 0 }}>
+        <div style={{ "width": "min(600px, 90vw)", "margin": "0 auto", "marginTop": 0 }}>
             <h2>Login</h2>
             <Form.Group className="mb-3" controlId="formBasicUsername">
                 <Form.Label>Enter Username</Form.Label>

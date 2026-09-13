@@ -23,7 +23,7 @@ const LoginPage = () => {
         if (sessionStorage.getItem('username')) {
             navigate("/")
         }
-    }, [])
+    }, [navigate])
 
     const loginUser = async (event) => {
         event.preventDefault();
@@ -47,7 +47,6 @@ const LoginPage = () => {
             sessionStorage.setItem('sessionID', response.sessionID);
             sessionStorage.setItem('username', enteredUsername);
 
-            console.log("seeting username to " + enteredUsername)
             setUsername(enteredUsername)
 
             // if backend sends an error
@@ -62,7 +61,7 @@ const LoginPage = () => {
     }
 
     return <div>
-        <div style={{ "width": 600, "margin": "0 auto", "marginTop": 30 }}>
+        <div style={{ "width": "min(600px, 90vw)", "margin": "0 auto", "marginTop": 30 }}>
             {username !== "" ? <Navigate to="/" /> : <div><Form>
                 <Form.Group className="mb-3 input-lg" controlId="formBasicUsername">
                     <Form.Label>Username</Form.Label>

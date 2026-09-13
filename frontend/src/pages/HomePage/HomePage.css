@@ -30,3 +30,6 @@
 
 
 
+.discovery { text-align: center; padding: 1.5rem 1rem; }
+.discovery #imgcontainer { margin: 1.5rem auto; }
+.book { width: min(473px, 90vw); object-fit: cover; }

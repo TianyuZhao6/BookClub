@@ -51,4 +51,5 @@
     display: flex;
     justify-content: center;
     margin-bottom: 30px;
-}
+}.book-select { border: 0; background: transparent; padding: 0; }
+.bookFilter label { margin: .5rem; }
