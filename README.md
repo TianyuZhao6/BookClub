@@ -23,7 +23,7 @@ npm run build
 
 The hosted build produces `dist/client` and `dist/server/index.js` with the API URL fixed to `/api`. Sites uses the existing `.openai/hosting.json` project and its `DB` D1 binding. Drizzle migrations under `drizzle/` are included in the build and applied by hosting during deployment. Run `npm run db:generate` after schema changes; do not edit applied migrations. Runtime API handlers never create tables.
 
-Discovery uses the public Open Library subject/search and work APIs without a key. Requests are cached briefly and have timeouts. A configured `GOOGLE_API_KEY` provides a secondary provider; if live providers fail, a clearly labeled collection of 20 classics remains browsable. Curated descriptions are original summaries; cover images and work links come from Open Library. Missing or unavailable covers use the existing local placeholder, and unavailable summaries are stated explicitly. No demo accounts or fabricated user ratings are created. No email delivery is implemented or required.
+Discovery uses the public Open Library subject/search and work APIs without a key. Requests are cached briefly and have timeouts. A configured `GOOGLE_API_KEY` provides a secondary provider; if live providers fail, a clearly labeled collection of 36 classics remains browsable. Curated descriptions are original summaries; cover images and work links come from Open Library. Missing or unavailable covers use the existing local placeholder, and unavailable summaries are stated explicitly. No demo accounts or fabricated user ratings are created. No email delivery is implemented or required.
 
 ## Run locally with Express and MongoDB
 

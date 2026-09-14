@@ -21,7 +21,11 @@ test('provider outages offer paginated classics without faking search matches',a
  const first=await searchBooks('All');
  const second=await searchBooks('All',{}, {page:2});
  assert.equal(first.source,'classics');assert.equal(first.books.length,12);assert.equal(first.hasMore,true);
- assert.ok(second.books.length);assert.equal(second.hasMore,false);
+ assert.equal(second.books.length,12);assert.equal(second.hasMore,true);
+ const third=await searchBooks('All',{}, {page:3});
+ assert.equal(third.books.length,12);assert.equal(third.hasMore,false);
+ assert.equal(new Set([...first.books,...second.books,...third.books].map(b=>b.title)).size,36);
+ const fiction=await searchBooks('Fiction');assert.ok(fiction.total>=30);
  assert.equal(first.books.some(b=>second.books.some(other=>other.id===b.id)),false);
  assert.deepEqual((await searchBooks('All',{}, {search:'no-such-book-987654'})).books,[]);
 });
