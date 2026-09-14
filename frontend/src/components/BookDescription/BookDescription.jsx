@@ -4,8 +4,10 @@ import Rating from '@mui/material/Rating';
 const BookDescription = (props) => {
 
     var sectionStyle = {
-        width: "min(473px, 90vw)",
-        height: "618px",
+        width: "100%",
+        height: "min(470px, 52vh)",
+        overflowY: "auto",
+        overflowWrap: "anywhere",
         display: "block",
         marginRight: "auto",
         marginLeft: "auto",

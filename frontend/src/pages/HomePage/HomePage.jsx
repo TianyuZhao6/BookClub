@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState, useRef } from 'react';
 import { Alert, Button } from 'react-bootstrap';
 import { getBookByGenre, getRecommendations, getBookByNameInDatabase, acceptBook, rejectBook, undoRejectBook } from '../../api/bookAPI';
 import { errorText } from '../../api/request';
@@ -18,18 +18,23 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [empty, setEmpty] = useState('');
+  const [source, setSource] = useState('');
+  const pendingLoad = useRef(0);
   const load = useCallback(async () => {
+    const sequence = ++pendingLoad.current;
     setBusy(true); setError(''); setFlipped(false);
     const response = username ? await getRecommendations() : await getBookByGenre('Fiction');
+    if (sequence !== pendingLoad.current) return;
     if (response.error) { setError(errorText(response.error)); setBook(null); }
     else {
+      setSource(response.source || '');
       const list = response.data.book;
       setBook(Array.isArray(list) ? list[Math.floor(Math.random() * list.length)] || null : list);
       setEmpty(response.message || 'No books found. Try another recommendation.');
     }
     setBusy(false);
   }, [username]);
-  useEffect(() => { setRejected([]); load(); }, [load]);
+  useEffect(() => { setRejected([]); load(); return () => { pendingLoad.current++; }; }, [load]);
   useEffect(() => {
     let active = true;
     setRating({ rating: 0, ratingCount: 0 });
@@ -58,6 +63,7 @@ export default function HomePage() {
     setBusy(false);
   };
   return <main className='discovery'>
+    {source === 'classics' && <p className='catalog-notice'>Showing our classics collection while live book search is unavailable.</p>}
     {error && <Alert variant='danger'>{error}</Alert>}
     {busy && <p role='status'>Loading…</p>}
     <Button disabled={busy || !book} onClick={() => choose(true)}>ACCEPT</Button>

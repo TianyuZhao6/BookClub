@@ -17,7 +17,8 @@ const LoginModal = (props) => {
     const [errorMsg, setErrorMsg] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
 
-    const loginUser = async () => {
+    const loginUser = async (event) => {
+        event.preventDefault();
 
         setSuccessMsg("");
         setErrorMsg("");
@@ -50,8 +51,9 @@ const LoginModal = (props) => {
     }
 
     return (<Modal onClosePasswordChange={props.onCloseModal}>
-        <div style={{ "width": "min(600px, 90vw)", "margin": "0 auto", "marginTop": 0 }}>
+        <div style={{ "width": "100%", "margin": "0 auto", "marginTop": 0 }}>
             <h2>Login</h2>
+            <Form onSubmit={loginUser}>
             <Form.Group className="mb-3" controlId="formBasicUsername">
                 <Form.Label>Enter Username</Form.Label>
                 <Form.Control type="text" onChange={(event) => setEnteredUsername(event.target.value)} />
@@ -60,7 +62,8 @@ const LoginModal = (props) => {
                 <Form.Label>Enter Password</Form.Label>
                 <Form.Control type="password" onChange={(event) => setEnteredPassword(event.target.value)} />
             </Form.Group>
-            <Button onClick={loginUser}>Login</Button>
+            <Button type="submit">Login</Button>
+            </Form>
             <br />
             {errorMsg !== "" && <Alert variant="danger" style={{ "marginTop": 20 }} key={errorMsg}>{errorMsg}</Alert>}
             {successMsg !== "" && <Alert variant="success" style={{ "marginTop": 20 }} key={successMsg}>{successMsg}</Alert>}

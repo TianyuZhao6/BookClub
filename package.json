@@ -4,7 +4,22 @@
   "scripts": {
     "setup": "npm ci --prefix backend && npm ci --prefix frontend",
     "test": "npm test --prefix backend && npm test --prefix frontend",
-    "build": "npm run build --prefix frontend"
+    "build": "node scripts/build-hosted.mjs",
+    "dev": "node hosted/dev.mjs",
+    "build:frontend": "npm run build --prefix frontend",
+    "db:generate": "drizzle-kit generate",
+    "test:hosted": "node --test hosted/*.test.js"
   },
-  "engines": { "node": ">=22.12" }
+  "engines": {
+    "node": ">=22.13"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.45.2"
+  },
+  "type": "module"
 }

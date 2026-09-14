@@ -1,7 +1,7 @@
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useContext, useState, useEffect } from 'react';
 import { login } from '../../api/userAPI';
-import { Navigate, useNavigate } from "react-router-dom"
+import { Navigate, useNavigate, Link } from "react-router-dom"
 import UserContext from '../../user/UserContext';
 import SessionContext from '../../session/SessionContext';
 
@@ -62,7 +62,7 @@ const LoginPage = () => {
 
     return <div>
         <div style={{ "width": "min(600px, 90vw)", "margin": "0 auto", "marginTop": 30 }}>
-            {username !== "" ? <Navigate to="/" /> : <div><Form>
+            {username !== "" ? <Navigate to="/" /> : <div><Form onSubmit={loginUser}>
                 <Form.Group className="mb-3 input-lg" controlId="formBasicUsername">
                     <Form.Label>Username</Form.Label>
                     <Form.Control type="text" onChange={(event) => setEnteredUsername(event.target.value)} />
@@ -74,10 +74,10 @@ const LoginPage = () => {
                 </Form.Group>
 
                 <div className="under-input">
-                    <Button variant="primary" type="submit" onClick={loginUser}>
+                    <Button variant="primary" type="submit">
                         Login
                     </Button>
-                    <div className="create-account-link" onClick={redirectToCreateAccountPage}>Create an account</div>
+                    <Link className="create-account-link" to="/signup">Create an account</Link>
                 </div>
 
             </Form>

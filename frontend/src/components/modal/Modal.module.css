@@ -42,3 +42,7 @@
     transform: translateY(0);
   }
 }
+
+.close { display: block; margin-left: auto; border: 0; background: transparent; color: #050C4E; font-size: 1.7rem; line-height: 1; padding: .4rem; }
+.content { min-width: 0; overflow-wrap: anywhere; }
+.content > div { max-width: 100%; }

@@ -1,35 +1,5 @@
-.book {
-    width: 473px;
-    height: 618px;
-    display: block;
-    margin-right: auto;
-    margin-left: auto;
-}
-
-.book:hover {
-    cursor: pointer;
-}
-
-#imgcontainer
-{
-    width: 100%;
-    margin-right: auto;
-    margin-left: auto;
-    color: black;
-
-}
-
-#imgcontainer:hover {
-    cursor: pointer;
-}
-
-.book {
-    box-shadow: 4px 4px 12px 6px rgba(0, 0, 0, 0.25);
-    border-radius: 20px;
-}
-
-
-
-.discovery { text-align: center; padding: 1.5rem 1rem; }
-.discovery #imgcontainer { margin: 1.5rem auto; }
-.book { width: min(473px, 90vw); object-fit: cover; }
+.discovery { text-align: center; padding: 1rem; }
+.discovery #imgcontainer { margin: 1rem auto; color: black; cursor: pointer; width: min(360px, 85vw); }
+.book { width: 100%; height: min(470px, 52vh); object-fit: contain; display: block; margin: auto; border-radius: 16px; background: #050C4E; box-shadow: 4px 4px 12px 6px rgba(0,0,0,.25); }
+.front-card p { margin: .75rem 0 0; font-weight: 600; }
+.catalog-notice { font-size: .9rem; margin-bottom: .75rem; }

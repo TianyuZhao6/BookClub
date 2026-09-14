@@ -5,3 +5,8 @@ node_modules/
 build/
 coverage/
 .DS_Store
+dist/
+.sites-runtime/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
