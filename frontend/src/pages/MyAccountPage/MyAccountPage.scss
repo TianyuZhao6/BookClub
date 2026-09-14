@@ -76,4 +76,7 @@
     display: flex;
     align-items: center;
     justify-content: space-around;
+}@media (max-width: 768px) {
+  .page, .display-properly { flex-direction: column; gap: 1rem; }
+  .account-info, .preferences { margin: 1rem; }
 }

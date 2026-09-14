@@ -15,6 +15,9 @@ const userSchema = new Schema({
         unique: true
     },
 
+    authVersion: { type: Number, default: 0 },
+    rejectedBooks: [{ type: String }],
+
     myLibrary: [{
         type: Schema.Types.ObjectId,
         ref: "Book"
