@@ -14,3 +14,6 @@ exports.search = (query, options) => new Promise((resolve, reject) => {
     }));
   }).then(resolve, reject);
 });
+
+exports.browse = async (genre,options) => (await import('../../hosted/search.js')).searchBooks(genre,process.env,options);
+exports.details = async work => (await import('../../hosted/search.js')).getBookDetails(work);

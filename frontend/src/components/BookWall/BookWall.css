@@ -1,0 +1,18 @@
+.book-wall{position:relative;height:560px;overflow:hidden;background:#0b5962;border-radius:16px;margin:24px 0 38px}
+.wall-columns{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;height:100%;padding:0 12px}
+.wall-column{min-width:0;overflow:hidden;height:100%}
+.wall-track{animation:book-wall-scroll var(--duration,40s) linear infinite;will-change:transform}
+.wall-column:nth-child(even) .wall-track{animation-direction:reverse}
+.wall-group{display:flex;flex-direction:column;gap:12px;padding-bottom:12px}
+.wall-book{height:280px;width:100%;position:relative;border:0;padding:0;background:#164652;overflow:hidden}
+.wall-book img{width:100%;height:100%;object-fit:cover;display:block}
+.wall-book span{position:absolute;inset:auto 0 0;background:linear-gradient(transparent,#082933);color:white;padding:38px 12px 12px;text-align:left;opacity:0;transition:opacity .2s;font-weight:600}
+.wall-book small{display:block;font-weight:400}
+.wall-book:hover span,.wall-book:focus-visible span{opacity:1}
+.wall-column:hover .wall-track,.wall-column:focus-within .wall-track,.book-wall.is-paused .wall-track{animation-play-state:paused}
+.wall-controls{position:absolute;z-index:2;right:16px;top:16px;display:flex;flex-wrap:wrap;gap:8px;max-width:calc(100% - 32px)}
+.wall-controls a,.wall-controls button{background:white;border:1px solid #174e57;border-radius:8px;padding:10px 16px;color:#123641;text-decoration:none;font-weight:600;box-shadow:0 2px 8px #0003}
+.wall-hint{position:absolute;bottom:0;left:0;right:0;padding:12px;margin:0;text-align:center;background:#0b3544df;color:#fff;font-size:13px;pointer-events:none}
+@keyframes book-wall-scroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+@media(max-width:700px){.book-wall{height:440px}.wall-columns{grid-template-columns:repeat(2,minmax(0,1fr))}.wall-column:nth-child(n+3){display:none}.wall-book{height:240px}}
+@media(prefers-reduced-motion:reduce){.wall-track{animation:none;transform:none}.wall-column{overflow-y:auto}.wall-group[aria-hidden=true]{display:none}.wall-book span{transition:none}}

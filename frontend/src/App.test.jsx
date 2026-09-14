@@ -10,7 +10,9 @@ const firstBook = { _id: 'book1', title: 'Test Book', author: 'Writer', authors:
 beforeEach(() => {
   vi.resetAllMocks(); sessionStorage.clear(); window.history.replaceState({}, '', '/');
   document.body.innerHTML = '<div id="overlays"></div>';
-  books.getBookByGenre.mockResolvedValue({ data: { book: firstBook } });
+  books.getBookByGenre.mockResolvedValue({ data: { book: [firstBook] } });
+  users.getMyLibraryByUsername.mockResolvedValue({ myLibrary: [] });
+  users.getMyReadBookByUsername.mockResolvedValue({ myList: [] });
   books.getRecommendations.mockResolvedValue({ data: { book: [firstBook] } });
   books.getBookByNameInDatabase.mockResolvedValue({ book: { rating: 0, ratingCount: 0 } });
 });
@@ -49,13 +51,15 @@ test('authenticated refresh loads library and removal cannot reappear through fi
 });
 test('reject and undo preserve the displayed book', async () => {
   authenticated('/');
-  books.getRecommendations.mockResolvedValueOnce({ data: { book: [firstBook] } }).mockResolvedValue({ data: { book: [{ ...firstBook, title: 'Next Book' }] } });
+  books.getRecommendations.mockResolvedValue({ data: { book: [firstBook, { ...firstBook, _id: 'book2', title: 'Next Book' }] } });
   books.rejectBook.mockResolvedValue({ message: 'book rejected' });
   books.undoRejectBook.mockResolvedValue({ message: 'Rejection undone' });
   render(<App />); await screen.findByAltText('Test Book');
-  fireEvent.click(screen.getByRole('button', { name: 'REJECT', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'View Test Book' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Not for me' }));
+  await waitFor(() => expect(screen.queryByAltText('Test Book')).not.toBeInTheDocument());
   await screen.findByAltText('Next Book');
-  fireEvent.click(screen.getByRole('button', { name: 'UNDO REJECTION' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Undo rejection' }));
   expect(await screen.findByAltText('Test Book')).toBeInTheDocument();
   expect(books.undoRejectBook).toHaveBeenCalledWith({ title: 'Test Book' });
 });
@@ -67,7 +71,7 @@ test('failed recommendation offers recovery and failed accept keeps the book', a
   expect(await screen.findByText('Search unavailable')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   await screen.findByAltText('Test Book');
-  fireEvent.click(screen.getByRole('button', { name: 'ACCEPT' }));
+  fireEvent.click(screen.getByRole('button', { name: '♡ Save to my library' }));
   expect(await screen.findByText('Save failed')).toBeInTheDocument();
   expect(screen.getByAltText('Test Book')).toBeInTheDocument();
 });
@@ -76,4 +80,26 @@ test('logout clears both stored user and session', async () => {
   render(<App />);
   await waitFor(() => expect(window.location.pathname).toBe('/login'));
   expect(sessionStorage.getItem('username')).toBeNull(); expect(sessionStorage.getItem('sessionID')).toBeNull();
+});
+
+test('anonymous saving opens login with an account creation choice', async () => {
+ render(<App />);
+ fireEvent.click(await screen.findByRole('button', { name: '♡ Save to my library' }));
+ fireEvent.click(screen.getByRole('link', { name: 'Create an account' }));
+ expect(await screen.findByLabelText('Re-Enter Password')).toBeInTheDocument();
+});
+test('catalog pagination, details navigation and saved state work together', async () => {
+ authenticated('/');
+ books.getRecommendations.mockResolvedValue({ data: { book: [firstBook, {...firstBook,_id:'book2',title:'Second Book'}] },hasMore:true,source:'openlibrary' });
+ books.acceptBook.mockResolvedValue({ message: 'Book accepted' });
+ render(<App />);
+ fireEvent.click(await screen.findByRole('button', { name: 'View Test Book' }));
+ fireEvent.click(screen.getByRole('button', { name: 'Next book' }));
+ expect(screen.getByAltText('Cover of Second Book')).toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+ fireEvent.click(screen.getAllByRole('button', { name: '♡ Save to my library' })[0]);
+ expect(await screen.findByRole('button', { name: '✓ In your library' })).toBeDisabled();
+ expect(books.acceptBook).toHaveBeenCalledWith(expect.objectContaining({title:'Test Book',description:'A book description',author:'Writer'}));
+ fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+ await waitFor(()=>expect(books.getRecommendations).toHaveBeenLastCalledWith({page:2,search:''}));
 });

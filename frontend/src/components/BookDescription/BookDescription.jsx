@@ -3,26 +3,8 @@ import Rating from '@mui/material/Rating';
 
 const BookDescription = (props) => {
 
-    var sectionStyle = {
-        width: "100%",
-        height: "min(470px, 52vh)",
-        overflowY: "auto",
-        overflowWrap: "anywhere",
-        display: "block",
-        marginRight: "auto",
-        marginLeft: "auto",
-        boxShadow: "4px 4px 12px 6px rgba(0, 0, 0, 0.25)",
-        borderRadius: "20px",
-        //backgroundImage: `url(${props.thumbnail})`,
-        backgroundColor: "black",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-        filter: "blur(0px)",
-    }
-
     return (
-        <div style={sectionStyle}>
+        <div className="book-description">
             <div>
                 <br />
                 <div className="title">
@@ -41,7 +23,7 @@ const BookDescription = (props) => {
                 <br />
 
                 <div className="description">
-                    {props.description && props.description.length > 800 ? props.description.substring(0, 250) + " ..." : props.description}
+                    {props.description}
                 </div>
 
                 <div className='ratings-div'>

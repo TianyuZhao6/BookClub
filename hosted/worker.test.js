@@ -40,7 +40,9 @@ test('hosted account, library, rating and session lifecycle against SQLite', asy
  await t.test('accept is idempotent; library and reading lists are persistent',async()=>{
   const details={title:'Lifecycle Book',author:'Test author',description:'Test',genre:['Fiction']};
   book=(await api('/books/accept','POST',details,token)).book;
-  await api('/books/accept','POST',details,token);
+  await api('/books/accept','POST',{...details,description:'Updated summary',thumbnail:'https://covers.openlibrary.org/b/id/123-M.jpg'},token);
+  const saved=(await api('/users/get/myLibrary/readerone','GET',undefined,token)).myLibrary[0];
+  assert.equal(saved.description,'Updated summary');assert.match(saved.thumbnail,/covers.openlibrary.org/);
   assert.equal((await api('/users/get/myLibrary/readerone','GET',undefined,token)).myLibrary.length,1);
   assert.equal((await api('/users/get/myUnReadBook/readerone','GET',undefined,token)).myList.length,1);
   assert.equal((await api('/users/set/myReadBook/readerone','POST',{bookId:'missing'},token)).status,404);

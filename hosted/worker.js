@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { database } from './db.js';
-import { searchBooks } from './search.js';
+import { searchBooks, getBookDetails } from './search.js';
 const json = (data,status=200) => Response.json(data,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const fail = (message,status=400) => { throw Object.assign(new Error(message),{status}); };
 const preferencesValid = v => Array.isArray(v) && v.length<=40 && v.every(x=>typeof x==='string' && x.trim().length>0 && x.length<=80);
@@ -44,9 +44,11 @@ export async function handleApi(request,env) {
    return book?json({book:bookView(book),error:null}):json({book:null,error:null});
  }
  if(path.startsWith('/books/get/by/genre/')&&method==='GET') {
-   const result=await searchBooks(decodeURIComponent(path.slice('/books/get/by/genre/'.length)),env);
+   const result=await searchBooks(decodeURIComponent(path.slice('/books/get/by/genre/'.length)),env,Object.fromEntries(url.searchParams));
+   if(url.searchParams.get('catalog')==='1')return json({...result,books:undefined,data:{book:result.books},error:null});
    return json({data:{book:result.books[Math.floor(Math.random()*result.books.length)]||null},source:result.source,error:null});
  }
+ if(path.startsWith('/books/get/')&&method==='GET'&&url.searchParams.has('work'))return json(await getBookDetails(url.searchParams.get('work')));
  const token=(request.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
  const user=await db.first('SELECT u.* FROM users u JOIN sessions s ON u.id=s.user_id WHERE s.token=? AND s.expires>?',token,Date.now());
  if(!user)fail('user is not logged in',401);
@@ -91,16 +93,16 @@ export async function handleApi(request,env) {
    }
  }
  if(path==='/books/get'&&method==='GET'){
-   const prefs=JSON.parse(user.preferences),genre=prefs.length?prefs[Math.floor(Math.random()*prefs.length)]:'Fiction';
-   const result=await searchBooks(genre,env);
+   const prefs=JSON.parse(user.preferences),genre=url.searchParams.get('genre')||(prefs.length?prefs[(Math.max(1,parseInt(url.searchParams.get('page'),10)||1)-1)%prefs.length]:'Fiction');
+   const result=await searchBooks(genre,env,Object.fromEntries(url.searchParams));
    const excluded=new Set((await db.all('SELECT title FROM rejections WHERE user_id=? UNION SELECT b.title FROM books b JOIN library l ON l.book_id=b.id WHERE l.user_id=?',user.id,user.id)).map(x=>x.title));
    const books=result.books.filter(b=>!excluded.has(b.title));
-   return json({data:{book:books},source:result.source,message:books.length?'':'No new books in this genre. Try again or change your preferences.',error:null});
+   return json({...result,books:undefined,data:{book:books},source:result.source,message:books.length?'':'No new books in this genre. Try again or change your preferences.',error:null});
  }
  if(path==='/books/accept'&&method==='POST'){
    const {title,author='',description='',thumbnail='',genre=[]}=body;
    if(typeof title!=='string'||!title.trim()||title.length>1000||![author,description,thumbnail].every(v=>typeof v==='string')||!preferencesValid(genre))fail('Valid book details are required');
-   await db.run('INSERT INTO books (id,title,author,description,thumbnail,genre) VALUES (?,?,?,?,?,?) ON CONFLICT(title) DO NOTHING',crypto.randomUUID(),title,author,description,thumbnail,JSON.stringify(genre));
+   await db.run("INSERT INTO books (id,title,author,description,thumbnail,genre) VALUES (?,?,?,?,?,?) ON CONFLICT(title) DO UPDATE SET thumbnail=COALESCE(NULLIF(excluded.thumbnail,''),books.thumbnail), description=COALESCE(NULLIF(excluded.description,''),books.description)",crypto.randomUUID(),title,author,description,thumbnail,JSON.stringify(genre));
    const book=await db.first('SELECT * FROM books WHERE title=?',title);
    await db.batch([['INSERT INTO library (user_id,book_id,is_read) VALUES (?,?,0) ON CONFLICT DO NOTHING',user.id,book.id],['DELETE FROM rejections WHERE user_id=? AND title=?',user.id,title]]);
    return json({book:bookView(book),message:'book was added to the library'});

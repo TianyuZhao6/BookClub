@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useContext, useState } from "react"
 import { Form, Button, Alert } from 'react-bootstrap';
 import { login } from '../../api/userAPI';
@@ -64,7 +65,7 @@ const LoginModal = (props) => {
             </Form.Group>
             <Button type="submit">Login</Button>
             </Form>
-            <br />
+            <p className="signup-choice">New to BookClub? <Link to="/signup" onClick={props.onCloseModal}>Create an account</Link></p>
             {errorMsg !== "" && <Alert variant="danger" style={{ "marginTop": 20 }} key={errorMsg}>{errorMsg}</Alert>}
             {successMsg !== "" && <Alert variant="success" style={{ "marginTop": 20 }} key={successMsg}>{successMsg}</Alert>}
         </div>

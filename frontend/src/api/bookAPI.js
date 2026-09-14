@@ -1,8 +1,10 @@
 import { request } from './request';
 export const getBookByName = title => request('/books/get/' + encodeURIComponent(title));
 export const getBookByNameInDatabase = title => request('/books/get/db/' + encodeURIComponent(title));
-export const getBookByGenre = genre => request('/books/get/by/genre/' + encodeURIComponent(genre));
-export const getRecommendations = () => request('/books/get');
+const query = options => options ? '?' + new URLSearchParams({catalog:'1',...options}) : '';
+export const getBookByGenre = (genre,options) => request('/books/get/by/genre/' + encodeURIComponent(genre)+query(options));
+export const getRecommendations = options => request('/books/get'+query(options));
+export const getBookDetails = book => request('/books/get/'+encodeURIComponent(book.title)+'?work='+encodeURIComponent(book.id.replace('/works/','')));
 export const acceptBook = (body, sessionID) => request('/books/accept', { method: 'POST', body, sessionID });
 export const rejectBook = (body, sessionID) => request('/books/reject', { method: 'POST', body, sessionID });
 export const undoRejectBook = body => request('/books/reject/undo', { method: 'POST', body });
