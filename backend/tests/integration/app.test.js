@@ -119,6 +119,23 @@ test('empty and failing external searches are handled', async () => {
     await request(app).get('/health').expect(200);
   } finally { search.search = original; }
 });
+test('catalog adapter integrates with Express and filters saved titles',async t=>{
+ t.mock.method(globalThis,'fetch',async url=>{
+  const endpoint=new URL(url);
+  if(endpoint.pathname==='/works/OL555555W.json')return Response.json({description:{value:'A remote summary'}});
+  assert.equal(endpoint.searchParams.get('q'),'Catalog Contract');
+  return Response.json({numFound:30,docs:[{key:'/works/OL555555W',title:'Catalog Book',author_name:['Remote Author'],cover_i:123},{key:'/works/OL555556W',title:book.title}]});
+ });
+ const path='/books/get?catalog=1&genre=All&search=Catalog%20Contract&page=2';
+ const response=(await call('get',path).expect(200)).body;
+ assert.equal(response.source,'openlibrary');assert.equal(response.page,2);assert.equal(response.hasMore,true);
+ assert.deepEqual(response.data.book.map(b=>b.title),['Catalog Book']);
+ const publicResponse=(await request(app).get('/books/get/by/genre/All?catalog=1&search=Catalog%20Contract&page=2').expect(200)).body;
+ assert.equal(publicResponse.data.book.length,2);
+ assert.equal((await request(app).get('/books/get/Catalog%20Book?work=OL555555W').expect(200)).body.description,'A remote summary');
+ await request(app).get('/books/get/Catalog%20Book?work=invalid').expect(400);
+});
+
 test('remove cleans read status and returns fresh library', async () => {
   await call('post', '/users/set/myLibrary/alice1', alice, {}).expect(400);
   const saved = (await call('get', '/users/get/myLibrary/alice1')).body.myLibrary[0];

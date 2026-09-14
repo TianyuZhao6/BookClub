@@ -31,7 +31,7 @@ test('cover wall moves, pauses on hover and focus, resumes, and opens details',a
  await expect(track).toHaveCSS('animation-play-state','paused');
  await page.getByRole('button',{name:'Resume scrolling',exact:true}).click();
  await page.mouse.move(0,0);
- await page.getByRole('heading',{level:1}).click();
+ await page.getByRole('heading',{name:'Find your next favourite book.',exact:true}).click();
  await expect(track).toHaveCSS('animation-play-state','running');
  await page.screenshot({path:testInfo.outputPath('bookclub-catalog.png'),fullPage:true});
  await page.emulateMedia({reducedMotion:'reduce'});

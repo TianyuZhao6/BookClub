@@ -36,3 +36,5 @@
 @media(max-width:1000px){.catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.discovery-heading{align-items:flex-start;flex-direction:column}}
 @media(max-width:700px){.catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.discovery{padding:24px 14px}.cover-button{height:195px;padding:12px}.catalog-card-body{padding:12px}.catalog-card h3{font-size:18px}.catalog-detail{grid-template-columns:1fr}.catalog-detail>img{margin:auto}.catalog-pagination{gap:10px}}
 @media(max-width:380px){.catalog-grid{grid-template-columns:1fr}}
+
+.discovery{background:#f7f8f3;border-radius:16px;margin-top:16px;margin-bottom:24px}
